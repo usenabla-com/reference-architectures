@@ -1,0 +1,184 @@
+// -----------------------------------------------------------------------------
+// Nabla Enclave Cedar Schema
+// Defines the entity types, actions, and relationships for the enclave
+// CMMC-compliant Zero Trust authorization model
+// -----------------------------------------------------------------------------
+
+namespace Nabla {
+
+  // =========================================================================
+  // Principal Types - Who is making the request
+  // =========================================================================
+
+  // Human users authenticated via Teleport
+  entity User in [Group, Team] {
+    email: String,
+    department: String,
+    clearanceLevel: String,     // "public", "internal", "confidential", "restricted"
+    mfaVerified: Bool,
+    sessionId: String,
+    cuiAuthorized: Bool,        // User has completed CUI training and is authorized
+    cuiTrainingDate: String,    // Date of last CUI training completion
+  };
+
+  // Service accounts for workloads
+  entity ServiceAccount in [Group] {
+    namespace: String,
+    workload: String,
+  };
+
+  // External services/integrations
+  entity ExternalService {
+    provider: String,
+    trustLevel: String,
+  };
+
+  // =========================================================================
+  // Principal Grouping Types
+  // =========================================================================
+
+  entity Group in [Group] {
+    description: String,
+  };
+
+  entity Team in [Team] {
+    department: String,
+  };
+
+  // =========================================================================
+  // Resource Types - What is being accessed
+  // =========================================================================
+
+  // Application resources
+  entity Application {
+    name: String,
+    namespace: String,
+    environment: String,        // "dev", "staging", "production"
+    dataClassification: String, // "public", "internal", "confidential", "restricted", "cui"
+    cuiEnclave: Bool,           // True if this is a CUI-specific instance
+    owner: User,
+  };
+
+  // Kubernetes namespace
+  entity Namespace {
+    name: String,
+    environment: String,
+    securityTier: String,       // "system", "workload", "data"
+  };
+
+  // Database resources
+  entity Database {
+    name: String,
+    host: String,
+    dataClassification: String,
+    owner: User,
+  };
+
+  entity DatabaseTable in [Database] {
+    name: String,
+    containsPII: Bool,
+    containsCUI: Bool,          // Controlled Unclassified Information (CMMC)
+  };
+
+  // File storage resources
+  entity StorageBucket {
+    name: String,
+    dataClassification: String,
+    encryptionRequired: Bool,
+    owner: User,
+  };
+
+  entity StorageObject in [StorageBucket] {
+    path: String,
+    size: Long,
+    contentType: String,
+  };
+
+  // Kubernetes workload resources
+  entity Pod in [Namespace] {
+    name: String,
+    namespace: String,
+    serviceAccount: String,
+    labels: Set<String>,
+  };
+
+  entity Deployment in [Namespace] {
+    name: String,
+    namespace: String,
+    replicas: Long,
+  };
+
+  entity Secret in [Namespace] {
+    name: String,
+    namespace: String,
+    type: String,
+  };
+
+  entity ConfigMap in [Namespace] {
+    name: String,
+    namespace: String,
+  };
+
+  // Audit and compliance resources
+  entity AuditLog {
+    source: String,
+    timeRange: String,
+  };
+
+  entity ComplianceReport {
+    framework: String,          // "cmmc", "nist-800-171", etc.
+    scope: String,
+  };
+
+  // =========================================================================
+  // Action Types - What operations can be performed
+  // =========================================================================
+
+  action read appliesTo {
+    principal: [User, ServiceAccount, ExternalService],
+    resource: [Application, Namespace, Database, DatabaseTable,
+               StorageBucket, StorageObject, Pod, Deployment,
+               Secret, ConfigMap, AuditLog, ComplianceReport],
+  };
+
+  action write appliesTo {
+    principal: [User, ServiceAccount, ExternalService],
+    resource: [Application, Database, DatabaseTable,
+               StorageBucket, StorageObject, Pod, Deployment,
+               Secret, ConfigMap, AuditLog, Namespace],
+  };
+
+  action delete appliesTo {
+    principal: [User, ServiceAccount, ExternalService],
+    resource: [Application, Database, DatabaseTable,
+               StorageBucket, StorageObject, Pod, Deployment,
+               Secret, ConfigMap, AuditLog, Namespace],
+  };
+
+  action execute appliesTo {
+    principal: [User, ServiceAccount],
+    resource: [Application, Pod],
+  };
+
+  action connect appliesTo {
+    principal: [User, ServiceAccount, ExternalService],
+    resource: [Application, Database, StorageBucket],
+  };
+
+  action admin appliesTo {
+    principal: [User, ServiceAccount, ExternalService],
+    resource: [Application, Namespace, Database, StorageBucket, AuditLog],
+  };
+
+  // Specific actions for compliance
+  action export appliesTo {
+    principal: [User, ServiceAccount],
+    resource: [Application, Database, DatabaseTable, StorageBucket, StorageObject, AuditLog],
+  };
+
+  action audit appliesTo {
+    principal: [User],
+    resource: [AuditLog, ComplianceReport],
+  };
+
+}

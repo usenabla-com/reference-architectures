@@ -1,0 +1,29 @@
+[
+  {
+    "uid": { "type": "Nabla::StorageBucket", "id": "minio-nextcloud" },
+    "attrs": {
+      "name": "nextcloud",
+      "dataClassification": "confidential",
+      "encryptionRequired": true
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::StorageBucket", "id": "minio-backups" },
+    "attrs": {
+      "name": "backups",
+      "dataClassification": "confidential",
+      "encryptionRequired": true
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::StorageBucket", "id": "minio-audit-logs" },
+    "attrs": {
+      "name": "audit-logs",
+      "dataClassification": "restricted",
+      "encryptionRequired": true
+    },
+    "parents": []
+  }
+]

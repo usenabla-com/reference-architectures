@@ -1,0 +1,87 @@
+# -----------------------------------------------------------------------------
+# Sizing Configurations
+# Maps t-shirt sizes to actual Terraform variable values
+# Used by the Composition to set node pool sizes, replica counts, etc.
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: enclave-sizing-config
+  namespace: crossplane-system
+data:
+  # Small: Dev/test, small teams (<20 users)
+  # ~$800-1200/month Azure cost
+  small: |
+    system_node_pool:
+      vm_size: Standard_D2s_v3
+      node_count: 2
+      min_count: 2
+      max_count: 3
+    workload_node_pools:
+      fips:
+        vm_size: Standard_D2s_v3
+        node_count: 2
+        min_count: 2
+        max_count: 4
+        fips_enabled: true
+    postgres_config:
+      instances: 2
+      storage_size: 50Gi
+    minio_config:
+      servers: 2
+      volumes_per_server: 2
+      volume_size: 50Gi
+
+  # Medium: Production, mid-size teams (20-100 users)
+  # ~$2000-3500/month Azure cost
+  medium: |
+    system_node_pool:
+      vm_size: Standard_D4s_v3
+      node_count: 3
+      min_count: 3
+      max_count: 5
+    workload_node_pools:
+      fips:
+        vm_size: Standard_D4s_v3
+        node_count: 3
+        min_count: 3
+        max_count: 10
+        fips_enabled: true
+    postgres_config:
+      instances: 3
+      storage_size: 100Gi
+    minio_config:
+      servers: 4
+      volumes_per_server: 4
+      volume_size: 100Gi
+
+  # Large: Enterprise, large teams (100+ users)
+  # ~$5000-10000/month Azure cost
+  large: |
+    system_node_pool:
+      vm_size: Standard_D8s_v3
+      node_count: 3
+      min_count: 3
+      max_count: 6
+    workload_node_pools:
+      fips:
+        vm_size: Standard_D8s_v3
+        node_count: 5
+        min_count: 5
+        max_count: 20
+        fips_enabled: true
+      highcpu:
+        vm_size: Standard_F8s_v2
+        node_count: 3
+        min_count: 3
+        max_count: 10
+        fips_enabled: true
+        taints:
+          - workload=compute:NoSchedule
+    postgres_config:
+      instances: 3
+      storage_size: 500Gi
+    minio_config:
+      servers: 4
+      volumes_per_server: 4
+      volume_size: 500Gi

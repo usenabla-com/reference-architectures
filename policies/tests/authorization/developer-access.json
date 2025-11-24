@@ -1,0 +1,118 @@
+{
+  "description": "Test developer role access permissions",
+  "tests": [
+    {
+      "name": "Developer can access code-server",
+      "principal": {
+        "type": "Nabla::User",
+        "id": "dev@nabla.io"
+      },
+      "action": {
+        "type": "Nabla::Action",
+        "id": "connect"
+      },
+      "resource": {
+        "type": "Nabla::Application",
+        "id": "code-server"
+      },
+      "context": {},
+      "entities": [
+        {
+          "uid": { "type": "Nabla::User", "id": "dev@nabla.io" },
+          "attrs": {
+            "email": "dev@nabla.io",
+            "department": "engineering",
+            "clearanceLevel": "confidential",
+            "mfaVerified": true,
+            "sessionId": "session-dev-123"
+          },
+          "parents": [
+            { "type": "Nabla::Group", "id": "Developers" }
+          ]
+        }
+      ],
+      "expected": "allow"
+    },
+    {
+      "name": "Developer can access mattermost with MFA",
+      "principal": {
+        "type": "Nabla::User",
+        "id": "dev@nabla.io"
+      },
+      "action": {
+        "type": "Nabla::Action",
+        "id": "connect"
+      },
+      "resource": {
+        "type": "Nabla::Application",
+        "id": "mattermost"
+      },
+      "context": {},
+      "entities": [
+        {
+          "uid": { "type": "Nabla::User", "id": "dev@nabla.io" },
+          "attrs": {
+            "email": "dev@nabla.io",
+            "department": "engineering",
+            "clearanceLevel": "confidential",
+            "mfaVerified": true,
+            "sessionId": "session-dev-123"
+          },
+          "parents": [
+            { "type": "Nabla::Group", "id": "Developers" }
+          ]
+        }
+      ],
+      "expected": "allow"
+    },
+    {
+      "name": "Developer denied access to openbao (restricted)",
+      "principal": {
+        "type": "Nabla::User",
+        "id": "dev@nabla.io"
+      },
+      "action": {
+        "type": "Nabla::Action",
+        "id": "connect"
+      },
+      "resource": {
+        "type": "Nabla::Application",
+        "id": "openbao"
+      },
+      "context": {},
+      "entities": [
+        {
+          "uid": { "type": "Nabla::User", "id": "dev@nabla.io" },
+          "attrs": {
+            "email": "dev@nabla.io",
+            "department": "engineering",
+            "clearanceLevel": "confidential",
+            "mfaVerified": true,
+            "sessionId": "session-dev-123"
+          },
+          "parents": [
+            { "type": "Nabla::Group", "id": "Developers" }
+          ]
+        }
+      ],
+      "expected": "deny"
+    },
+    {
+      "name": "Developer denied admin actions",
+      "principal": {
+        "type": "Nabla::User",
+        "id": "dev@nabla.io"
+      },
+      "action": {
+        "type": "Nabla::Action",
+        "id": "admin"
+      },
+      "resource": {
+        "type": "Nabla::Application",
+        "id": "nextcloud"
+      },
+      "context": {},
+      "expected": "deny"
+    }
+  ]
+}

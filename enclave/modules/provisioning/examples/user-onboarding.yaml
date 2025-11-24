@@ -1,0 +1,135 @@
+# -----------------------------------------------------------------------------
+# Example: Standard User Onboarding
+# User with internal clearance, no CUI access
+# -----------------------------------------------------------------------------
+apiVersion: usenabla.com/v1
+kind: UserOnboarding
+metadata:
+  name: john-doe-onboarding
+  namespace: provisioning
+spec:
+  teleportUser: john.doe@example.com
+  clearanceLevel: internal
+  cuiAuthorized: false
+  applications:
+    - name: mattermost
+      instance: standard
+      teams:
+        - engineering
+        - general
+    - name: nextcloud
+      instance: standard
+      teams:
+        - engineering
+  notifyOnComplete: true
+---
+# -----------------------------------------------------------------------------
+# Example: CUI-Authorized User Onboarding
+# User with confidential clearance and CUI access
+# -----------------------------------------------------------------------------
+apiVersion: usenabla.com/v1
+kind: UserOnboarding
+metadata:
+  name: jane-smith-onboarding
+  namespace: provisioning
+spec:
+  teleportUser: jane.smith@example.com
+  clearanceLevel: confidential
+  cuiAuthorized: true
+  cuiTrainingCompletedDate: "2024-01-15"
+  applications:
+    # Standard applications
+    - name: mattermost
+      instance: standard
+      teams:
+        - engineering
+        - project-alpha
+    - name: nextcloud
+      instance: standard
+      teams:
+        - engineering
+    # CUI applications - only provisioned if cuiAuthorized is true
+    - name: mattermost
+      instance: cui
+      teams:
+        - cui-engineering
+        - cui-project-alpha
+      condition: "traits.cui_authorized == 'true'"
+    - name: nextcloud
+      instance: cui
+      teams:
+        - cui-engineering
+      condition: "traits.cui_authorized == 'true'"
+  notifyOnComplete: true
+---
+# -----------------------------------------------------------------------------
+# Example: CUI Administrator Onboarding
+# User with restricted clearance and full CUI admin access
+# -----------------------------------------------------------------------------
+apiVersion: usenabla.com/v1
+kind: UserOnboarding
+metadata:
+  name: admin-user-onboarding
+  namespace: provisioning
+spec:
+  teleportUser: admin@example.com
+  clearanceLevel: restricted
+  cuiAuthorized: true
+  cuiTrainingCompletedDate: "2024-01-01"
+  applications:
+    # Standard applications with admin access
+    - name: mattermost
+      instance: standard
+      teams:
+        - system_admin
+    - name: nextcloud
+      instance: standard
+      teams:
+        - admin
+    # CUI applications with admin access
+    - name: mattermost
+      instance: cui
+      teams:
+        - system_admin
+        - cui-all-teams
+      condition: "traits.cui_authorized == 'true' && traits.clearance_level == 'restricted'"
+    - name: nextcloud
+      instance: cui
+      teams:
+        - admin
+        - cui-all-users
+      condition: "traits.cui_authorized == 'true' && traits.clearance_level == 'restricted'"
+  notifyOnComplete: true
+---
+# -----------------------------------------------------------------------------
+# Example: Clearance Upgrade - Internal to Confidential with CUI grant
+# -----------------------------------------------------------------------------
+apiVersion: usenabla.com/v1
+kind: ClearanceUpdate
+metadata:
+  name: john-doe-clearance-upgrade
+  namespace: provisioning
+spec:
+  teleportUser: john.doe@example.com
+  newClearanceLevel: confidential
+  grantCuiAccess: true
+  cuiTrainingCompletedDate: "2024-02-01"
+  reason: "Completed CUI training and background check"
+  approvedBy: security-admin@example.com
+  effectiveDate: "2024-02-01"
+---
+# -----------------------------------------------------------------------------
+# Example: Clearance Downgrade - Revoke CUI access
+# -----------------------------------------------------------------------------
+apiVersion: usenabla.com/v1
+kind: ClearanceUpdate
+metadata:
+  name: departing-user-clearance
+  namespace: provisioning
+spec:
+  teleportUser: departing.user@example.com
+  newClearanceLevel: public
+  revokeCuiAccess: true
+  reason: "Employee departure - access revocation"
+  approvedBy: hr-admin@example.com
+  effectiveDate: "2024-02-15"

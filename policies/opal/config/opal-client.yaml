@@ -1,0 +1,79 @@
+# =============================================================================
+# OPAL Client Configuration
+# Runs alongside Cedar PDP to receive policy and data updates
+# =============================================================================
+
+# OPAL Server connection
+server:
+  url: "${OPAL_SERVER_URL:-http://opal-server:7002}"
+
+  # Retry configuration
+  retry:
+    max_attempts: 5
+    backoff_seconds: 2
+
+# Policy store configuration
+policy_store:
+  # Use Cedar as the policy engine
+  type: CEDAR
+
+  # Local path for policy storage
+  path: /policy
+
+# Data store configuration
+data_store:
+  # Path for entity/context data
+  path: /policy/data
+
+# Cedar-specific configuration
+cedar:
+  enabled: true
+
+  # Path to Cedar schema
+  schema_path: /policy/schema/nabla.cedarschema
+
+  # Path to Cedar policies
+  policies_path: /policy/policies
+
+  # Path to entity data
+  entities_path: /policy/entities
+
+# Inline Cedar agent (sidecar mode)
+inline_cedar:
+  enabled: true
+
+  # Cedar agent endpoint
+  agent_url: "http://localhost:8180"
+
+# Subscription topics
+subscriptions:
+  # Policy updates
+  - topic: policy_data
+    type: policy
+
+  # Entity data updates
+  - topic: entity_data
+    type: data
+    paths:
+      - users
+      - groups
+      - namespaces
+      - applications
+
+# Callback configuration for policy reload
+callbacks:
+  # Notify Cedar agent when policies are updated
+  on_policy_update:
+    - url: "http://localhost:8180/reload"
+      method: POST
+
+# Health check
+health:
+  enabled: true
+  path: /healthz
+  port: 7000
+
+# Logging
+logging:
+  level: INFO
+  format: json

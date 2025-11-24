@@ -1,0 +1,65 @@
+[
+  {
+    "uid": { "type": "Nabla::Namespace", "id": "workloads" },
+    "attrs": {
+      "name": "workloads",
+      "environment": "production",
+      "securityTier": "workload"
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::Namespace", "id": "teleport" },
+    "attrs": {
+      "name": "teleport",
+      "environment": "production",
+      "securityTier": "system"
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::Namespace", "id": "policy-system" },
+    "attrs": {
+      "name": "policy-system",
+      "environment": "production",
+      "securityTier": "system"
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::Namespace", "id": "observability" },
+    "attrs": {
+      "name": "observability",
+      "environment": "production",
+      "securityTier": "system"
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::Namespace", "id": "data" },
+    "attrs": {
+      "name": "data",
+      "environment": "production",
+      "securityTier": "data"
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::Namespace", "id": "secrets" },
+    "attrs": {
+      "name": "secrets",
+      "environment": "production",
+      "securityTier": "system"
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::Namespace", "id": "kube-system" },
+    "attrs": {
+      "name": "kube-system",
+      "environment": "production",
+      "securityTier": "system"
+    },
+    "parents": []
+  }
+]

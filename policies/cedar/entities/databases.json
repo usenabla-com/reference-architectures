@@ -1,0 +1,77 @@
+[
+  {
+    "uid": { "type": "Nabla::Database", "id": "postgres-main" },
+    "attrs": {
+      "name": "postgres-main",
+      "host": "postgres-rw.data.svc.cluster.local",
+      "dataClassification": "confidential"
+    },
+    "parents": []
+  },
+  {
+    "uid": { "type": "Nabla::DatabaseTable", "id": "mattermost.users" },
+    "attrs": {
+      "name": "users",
+      "containsPII": true,
+      "containsCUI": true
+    },
+    "parents": [
+      { "type": "Nabla::Database", "id": "postgres-main" }
+    ]
+  },
+  {
+    "uid": { "type": "Nabla::DatabaseTable", "id": "mattermost.posts" },
+    "attrs": {
+      "name": "posts",
+      "containsPII": false,
+      "containsCUI": true
+    },
+    "parents": [
+      { "type": "Nabla::Database", "id": "postgres-main" }
+    ]
+  },
+  {
+    "uid": { "type": "Nabla::DatabaseTable", "id": "mattermost.channels" },
+    "attrs": {
+      "name": "channels",
+      "containsPII": false,
+      "containsCUI": true
+    },
+    "parents": [
+      { "type": "Nabla::Database", "id": "postgres-main" }
+    ]
+  },
+  {
+    "uid": { "type": "Nabla::DatabaseTable", "id": "nextcloud.users" },
+    "attrs": {
+      "name": "users",
+      "containsPII": true,
+      "containsCUI": true
+    },
+    "parents": [
+      { "type": "Nabla::Database", "id": "postgres-main" }
+    ]
+  },
+  {
+    "uid": { "type": "Nabla::DatabaseTable", "id": "nextcloud.files" },
+    "attrs": {
+      "name": "files",
+      "containsPII": false,
+      "containsCUI": true
+    },
+    "parents": [
+      { "type": "Nabla::Database", "id": "postgres-main" }
+    ]
+  },
+  {
+    "uid": { "type": "Nabla::DatabaseTable", "id": "nextcloud.shares" },
+    "attrs": {
+      "name": "shares",
+      "containsPII": false,
+      "containsCUI": true
+    },
+    "parents": [
+      { "type": "Nabla::Database", "id": "postgres-main" }
+    ]
+  }
+]
