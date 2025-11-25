@@ -1,0 +1,63 @@
+# -----------------------------------------------------------------------------
+# Crossplane Helm Provider
+# Installs provider-helm into Crossplane (package from Upbound / crossplane-contrib)
+# -----------------------------------------------------------------------------
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-helm
+spec:
+  # change this package to the exact xpkg you want (versioned)
+  package: xpkg.upbound.io/upbound/provider-helm:v0.20.5
+  controllerConfigRef:
+    name: provider-helm-controller-config
+---
+apiVersion: pkg.crossplane.io/v1alpha1
+kind: ControllerConfig
+metadata:
+  name: provider-helm-controller-config
+spec:
+  args:
+    # useful for debugging; remove --debug in prod
+    - --debug
+  # tune resources to your environment
+  resources:
+    limits:
+      cpu: "1"
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+---
+# -----------------------------------------------------------------------------
+# ProviderConfig: example (IN-CLUSTER / InjectedIdentity)
+# Reuse the controller's service-account (needs RBAC bound to access target clusters)
+# -----------------------------------------------------------------------------
+apiVersion: helm.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: provider-helm-incluster
+spec:
+  # identity/injected means the provider will use in-cluster serviceaccount credentials
+  identity:
+    type: InjectedIdentity
+  # optional default namespace for releases the provider will manage when none provided
+  defaultNamespace: default
+---
+# -----------------------------------------------------------------------------
+# ProviderConfig: example (KUBECONFIG from Secret)
+# Useful when deploying to remote clusters (store kubeconfig in a Secret)
+# -----------------------------------------------------------------------------
+apiVersion: helm.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: provider-helm-remote-kubeconfig
+spec:
+  # provider reads kubeconfig from the referenced Secret
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: remote-cluster-kubeconfig
+      key: kubeconfig
+  defaultNamespace: default

@@ -1,0 +1,111 @@
+
+🎉 Nooklanes has been installed!
+
+==============================================================================
+INSTALLATION SUMMARY
+==============================================================================
+
+Release Name:   {{ .Release.Name }}
+Namespace:      {{ .Release.Namespace }}
+Domain:         {{ .Values.global.domain }}
+CUI Enabled:    {{ .Values.swimlanes.cuiEnabled }}
+
+==============================================================================
+NEXT STEPS
+==============================================================================
+
+1. Configure DNS
+   Get Teleport LoadBalancer IP:
+
+   kubectl get svc -n teleport teleport-cluster -ojsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+   Create DNS A records:
+   • {{ .Values.global.domain }} → LoadBalancer IP
+   • *.{{ .Values.global.domain }} → LoadBalancer IP
+
+2. Initialize OpenBao (Non-CUI)
+   {{- if eq .Values.secrets.openbao.seal.type "shamir" }}
+   Manual unseal (Shamir):
+
+   kubectl exec -n openbao openbao-0 -- bao operator init
+   # SAVE THE UNSEAL KEYS AND ROOT TOKEN!
+
+   # Unseal each replica:
+   {{- range $i := until (int .Values.secrets.openbao.replicas) }}
+   kubectl exec -n openbao openbao-{{ $i }} -- bao operator unseal
+   {{- end }}
+   {{- else }}
+   Auto-unseal configured ({{ .Values.secrets.openbao.seal.type }}):
+
+   kubectl exec -n openbao openbao-0 -- bao operator init
+   # SAVE THE ROOT TOKEN!
+   # Pods will auto-unseal on restart
+   {{- end }}
+
+{{- if .Values.swimlanes.cuiEnabled }}
+3. Initialize OpenBao-CUI (Separate instance for CUI workloads)
+   {{- if eq .Values.secrets.openbaoCui.seal.type "shamir" }}
+   Manual unseal (Shamir):
+
+   kubectl exec -n openbao-cui openbao-cui-0 -- bao operator init
+   # SAVE THE UNSEAL KEYS AND ROOT TOKEN!
+
+   # Unseal each replica:
+   {{- range $i := until (int .Values.secrets.openbaoCui.replicas) }}
+   kubectl exec -n openbao-cui openbao-cui-{{ $i }} -- bao operator unseal
+   {{- end }}
+   {{- else }}
+   Auto-unseal configured ({{ .Values.secrets.openbaoCui.seal.type }}):
+   NOTE: Uses SEPARATE KMS key from non-CUI instance!
+
+   kubectl exec -n openbao-cui openbao-cui-0 -- bao operator init
+   # SAVE THE ROOT TOKEN!
+   # Pods will auto-unseal on restart
+   {{- end }}
+
+4. Create Teleport Admin User
+{{- else }}
+3. Create Teleport Admin User
+{{- end }}
+
+   kubectl exec -n teleport deployment/teleport-cluster -- tctl users add admin --roles=admin
+
+   Visit the URL provided to complete setup.
+
+{{- if .Values.swimlanes.cuiEnabled }}
+5. Access Services
+{{- else }}
+4. Access Services
+{{- end }}
+
+   • Teleport:  https://{{ .Values.global.domain }}
+   {{- if .Values.observability.prometheus.enabled }}
+   • Grafana:   https://grafana.{{ .Values.global.domain }}
+   {{- end }}
+
+==============================================================================
+SWIMLANE CONFIGURATION
+==============================================================================
+
+Non-CUI Swimlane:
+  • Workloads:  {{ .Values.swimlanes.nonCui.workloadNamespace }}
+  • PostgreSQL: {{ .Values.swimlanes.nonCui.postgresNamespace }}
+  • MinIO:      {{ .Values.swimlanes.nonCui.minioNamespace }}
+
+{{- if .Values.swimlanes.cuiEnabled }}
+CUI Swimlane (Isolated):
+  • Workloads:  {{ .Values.swimlanes.cui.workloadNamespace }}
+  • PostgreSQL: {{ .Values.swimlanes.cui.postgresNamespace }}
+  • MinIO:      {{ .Values.swimlanes.cui.minioNamespace }}
+  • Encryption: {{ .Values.swimlanes.cui.encryptionAtRest }}
+{{- end }}
+
+==============================================================================
+DOCUMENTATION
+==============================================================================
+
+README:     cat nooklanes-helm/README.md
+Examples:   ls crossplane/compositions/
+Policies:   ls enclave-policies/cedar/policies/
+
+For support: https://github.com/usenabla-com/nabla-enclave/issues

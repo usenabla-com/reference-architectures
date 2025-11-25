@@ -294,7 +294,8 @@ resource "azurerm_kubernetes_cluster" "enclave" {
 
   depends_on = [
     azurerm_role_assignment.disk_encryption_keyvault,
-    azurerm_role_assignment.aks_keyvault_secrets,
+    azurerm_role_assignment.aks_keyvault_crypto_non_cui,
+    azurerm_role_assignment.aks_keyvault_crypto_cui,
   ]
 }
 

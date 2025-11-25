@@ -1,0 +1,81 @@
+{{- if .Values.data.minio.enabled }}
+# =============================================================================
+# MinIO Tenant - Non-CUI Object Storage
+# S3-compatible object storage for application data and PostgreSQL backups
+# =============================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-credentials
+  namespace: {{ .Values.swimlanes.nonCui.minioNamespace }}
+type: Opaque
+stringData:
+  accesskey: {{ randAlphaNum 20 }}
+  secretkey: {{ randAlphaNum 40 }}
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-postgres-credentials
+  namespace: {{ .Values.swimlanes.nonCui.postgresNamespace }}
+type: Opaque
+stringData:
+  accesskey: {{ randAlphaNum 20 }}
+  secretkey: {{ randAlphaNum 40 }}
+
+---
+apiVersion: minio.min.io/v2
+kind: Tenant
+metadata:
+  name: minio
+  namespace: {{ .Values.swimlanes.nonCui.minioNamespace }}
+  labels:
+    app.kubernetes.io/name: minio
+    app.kubernetes.io/component: object-storage
+    nooklanes.io/swimlane: "non-cui"
+    nooklanes.io/data-classification: {{ .Values.swimlanes.nonCui.dataClassification }}
+spec:
+  image: {{ .Values.global.chainguardRegistry }}/minio:latest
+
+  pools:
+    - servers: {{ .Values.data.minio.tenant.servers }}
+      name: pool-0
+      volumesPerServer: {{ .Values.data.minio.tenant.volumesPerServer }}
+      volumeClaimTemplate:
+        metadata:
+          name: data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ .Values.data.minio.tenant.volumeSize }}
+          {{- if or .Values.data.minio.tenant.storageClass .Values.global.storageClass }}
+          storageClassName: {{ .Values.data.minio.tenant.storageClass | default .Values.global.storageClass }}
+          {{- end }}
+      resources:
+        {{- toYaml .Values.data.minio.resources | nindent 8 }}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+
+  mountPath: /data
+  requestAutoCert: false
+
+  configuration:
+    name: minio-credentials
+
+  users:
+    - name: minio-postgres-credentials
+
+  buckets:
+    {{- range .Values.data.minio.buckets }}
+    - name: {{ .name }}
+    {{- end }}
+
+  features:
+    enableSFTP: false
+{{- end }}

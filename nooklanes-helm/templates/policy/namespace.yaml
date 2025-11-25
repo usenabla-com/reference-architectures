@@ -1,0 +1,11 @@
+{{- if .Values.policy.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: policy-system
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/part-of: nooklanes
+    app.kubernetes.io/component: policy
+    pod-security.kubernetes.io/enforce: {{ .Values.podSecurityStandards.enforce }}
+{{- end }}

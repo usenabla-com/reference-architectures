@@ -1,0 +1,8 @@
+{{- if .Values.identity.enabled }}
+# =============================================================================
+# Teleport Cluster Configuration
+# This configures the teleport-cluster subchart dependency
+# =============================================================================
+# Note: These values are passed to the teleport-cluster subchart via values.yaml
+# The subchart is defined in Chart.yaml dependencies
+{{- end }}

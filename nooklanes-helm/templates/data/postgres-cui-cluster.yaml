@@ -1,0 +1,100 @@
+{{- if and .Values.data.postgresCui.enabled .Values.swimlanes.cuiEnabled }}
+# =============================================================================
+# PostgreSQL Cluster - CUI Data Tier (Isolated & Encrypted)
+# CMMC Level 2 compliant PostgreSQL for Controlled Unclassified Information
+# =============================================================================
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-cui
+  namespace: {{ .Values.swimlanes.cui.postgresNamespace }}
+  labels:
+    app.kubernetes.io/name: postgres-cui
+    app.kubernetes.io/component: database-cui
+    nooklanes.io/swimlane: "cui"
+    nooklanes.io/data-classification: {{ .Values.swimlanes.cui.dataClassification }}
+    nooklanes.io/cui-authorized: "true"
+    nooklanes.io/encryption-required: "true"
+spec:
+  instances: {{ .Values.data.postgresCui.instances }}
+
+  imageName: {{ .Values.global.chainguardRegistry }}/postgres:{{ .Values.data.postgresCui.postgresql.version }}
+
+  primaryUpdateStrategy: unsupervised
+
+  postgresql:
+    parameters:
+      {{- range $key, $value := .Values.data.postgresCui.postgresql.parameters }}
+      {{ $key }}: {{ $value | quote }}
+      {{- end }}
+      # Enhanced security for CUI
+      ssl: "on"
+      ssl_min_protocol_version: "TLSv1.3"
+      password_encryption: "scram-sha-256"
+      log_connections: "on"
+      log_disconnections: "on"
+      log_statement: "ddl"
+    pg_hba:
+      - hostssl all all 10.0.0.0/8 scram-sha-256
+      - hostssl all all 0.0.0.0/0 scram-sha-256
+
+  bootstrap:
+    initdb:
+      database: enclave_cui
+      owner: enclave_cui
+      secret:
+        name: postgres-cui-superuser
+
+  superuserSecret:
+    name: postgres-cui-superuser
+
+  storage:
+    size: {{ .Values.data.postgresCui.storage.size }}
+    {{- if or .Values.data.postgresCui.storage.storageClass .Values.global.storageClass }}
+    storageClass: {{ .Values.data.postgresCui.storage.storageClass | default .Values.global.storageClass }}
+    {{- end }}
+
+  {{- if .Values.data.postgresCui.backup.enabled }}
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://postgres-cui-backups/
+      endpointURL: http://minio-cui.{{ .Values.swimlanes.cui.minioNamespace }}.svc.cluster.local:9000
+      s3Credentials:
+        accessKeyId:
+          name: minio-postgres-cui-credentials
+          key: accesskey
+        secretAccessKey:
+          name: minio-postgres-cui-credentials
+          key: secretkey
+      wal:
+        compression: gzip
+        encryption: AES256
+      data:
+        compression: gzip
+        encryption: AES256
+    retentionPolicy: {{ .Values.data.postgresCui.backup.retentionPolicy | quote }}
+  {{- end }}
+
+  monitoring:
+    enablePodMonitor: true
+
+  resources:
+    {{- toYaml .Values.data.postgresCui.resources | nindent 4 }}
+
+  affinity:
+    podAntiAffinityType: required
+
+---
+# CUI Superuser secret (auto-generated password)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-cui-superuser
+  namespace: {{ .Values.swimlanes.cui.postgresNamespace }}
+  labels:
+    nooklanes.io/cui-authorized: "true"
+type: kubernetes.io/basic-auth
+stringData:
+  username: postgres
+  password: {{ randAlphaNum 32 | b64enc | quote }}
+{{- end }}

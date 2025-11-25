@@ -1,0 +1,11 @@
+{{- if .Values.observability.prometheus.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/part-of: nooklanes
+    app.kubernetes.io/component: observability
+    pod-security.kubernetes.io/enforce: {{ .Values.podSecurityStandards.enforce }}
+{{- end }}

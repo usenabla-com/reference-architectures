@@ -38,14 +38,44 @@ output "oidc_issuer_url" {
   value       = azurerm_kubernetes_cluster.enclave.oidc_issuer_url
 }
 
-output "key_vault_id" {
-  description = "Key Vault ID"
-  value       = azurerm_key_vault.enclave.id
+output "non_cui_key_vault_id" {
+  description = "Non-CUI Key Vault ID"
+  value       = azurerm_key_vault.non_cui.id
 }
 
-output "key_vault_uri" {
-  description = "Key Vault URI"
-  value       = azurerm_key_vault.enclave.vault_uri
+output "non_cui_key_vault_uri" {
+  description = "Non-CUI Key Vault URI"
+  value       = azurerm_key_vault.non_cui.vault_uri
+}
+
+output "non_cui_key_vault_name" {
+  description = "Non-CUI Key Vault Name"
+  value       = azurerm_key_vault.non_cui.name
+}
+
+output "non_cui_unseal_key_name" {
+  description = "Name of the OpenBao unseal key in the Non-CUI vault"
+  value       = azurerm_key_vault_key.openbao_unseal_non_cui.name
+}
+
+output "cui_key_vault_id" {
+  description = "CUI Key Vault ID"
+  value       = azurerm_key_vault.cui.id
+}
+
+output "cui_key_vault_uri" {
+  description = "CUI Key Vault URI"
+  value       = azurerm_key_vault.cui.vault_uri
+}
+
+output "cui_key_vault_name" {
+  description = "CUI Key Vault Name"
+  value       = azurerm_key_vault.cui.name
+}
+
+output "cui_unseal_key_name" {
+  description = "Name of the OpenBao unseal key in the CUI vault"
+  value       = azurerm_key_vault_key.openbao_unseal_cui.name
 }
 
 output "vnet_id" {

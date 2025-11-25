@@ -1,0 +1,160 @@
+{{- if .Values.identity.enabled }}
+# =============================================================================
+# Teleport Roles ConfigMap
+# Defines RBAC roles for Teleport access control
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teleport-roles-config
+  namespace: teleport
+  labels:
+    app.kubernetes.io/name: teleport
+    app.kubernetes.io/component: identity
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  admin-role.yaml: |
+    kind: role
+    version: v7
+    metadata:
+      name: admin
+    spec:
+      allow:
+        logins:
+          - root
+          - admin
+          - "{{`{{internal.logins}}`}}"
+        node_labels:
+          "*": "*"
+        kubernetes_groups:
+          - system:masters
+        kubernetes_labels:
+          "*": "*"
+        kubernetes_resources:
+          - kind: "*"
+            namespace: "*"
+            name: "*"
+        db_labels:
+          "*": "*"
+        db_names:
+          - "*"
+        db_users:
+          - "*"
+        app_labels:
+          "*": "*"
+        rules:
+          - resources:
+              - "*"
+            verbs:
+              - "*"
+      options:
+        max_session_ttl: 12h
+        forward_agent: true
+        port_forwarding: true
+        permit_x11_forwarding: false
+        record_session:
+          default: best_effort
+
+  developer-role.yaml: |
+    kind: role
+    version: v7
+    metadata:
+      name: developer
+    spec:
+      allow:
+        logins:
+          - "{{`{{internal.logins}}`}}"
+        node_labels:
+          env:
+            - dev
+            - staging
+        kubernetes_groups:
+          - developers
+        kubernetes_labels:
+          env:
+            - dev
+            - staging
+        kubernetes_resources:
+          - kind: pod
+            namespace: "*"
+            name: "*"
+            verbs:
+              - get
+              - list
+              - watch
+          - kind: deployment
+            namespace: "*"
+            name: "*"
+            verbs:
+              - get
+              - list
+              - watch
+        db_labels:
+          env:
+            - dev
+            - staging
+        db_names:
+          - development
+          - staging
+        db_users:
+          - readonly
+          - developer
+        app_labels:
+          "*": "*"
+      deny:
+        node_labels:
+          env: production
+        kubernetes_labels:
+          env: production
+      options:
+        max_session_ttl: 8h
+        forward_agent: false
+        port_forwarding: true
+        record_session:
+          default: best_effort
+
+  auditor-role.yaml: |
+    kind: role
+    version: v7
+    metadata:
+      name: auditor
+    spec:
+      allow:
+        rules:
+          - resources:
+              - event
+              - session
+            verbs:
+              - list
+              - read
+        app_labels:
+          "*": "*"
+        review_requests:
+          roles:
+            - "*"
+      options:
+        max_session_ttl: 8h
+        forward_agent: false
+        port_forwarding: false
+
+  access-role.yaml: |
+    kind: role
+    version: v7
+    metadata:
+      name: access
+    spec:
+      allow:
+        app_labels:
+          "*": "*"
+        request:
+          roles:
+            - developer
+            - admin
+          thresholds:
+            - approve: 1
+              deny: 1
+      options:
+        max_session_ttl: 8h
+        forward_agent: false
+        port_forwarding: false
+{{- end }}

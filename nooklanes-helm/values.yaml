@@ -1,0 +1,526 @@
+# =============================================================================
+# Nooklanes Enclave - Default Values
+# CMMC-compliant enclave with CUI/Non-CUI swimlane isolation
+# =============================================================================
+
+# Global settings
+global:
+  # Domain for the enclave (required)
+  domain: "enclave.example.com"
+
+  # Chainguard registry for secure, minimal images
+  chainguardRegistry: "cgr.dev/chainguard"
+
+  # Environment name
+  environment: "production"
+
+  # Storage class to use (leave empty for cluster default)
+  storageClass: ""
+
+# =============================================================================
+# Swimlane Configuration - CUI and Non-CUI Isolation
+# =============================================================================
+swimlanes:
+  # Enable CUI swimlane (separate data tier for Controlled Unclassified Information)
+  cuiEnabled: true
+
+  # Non-CUI Swimlane Configuration
+  nonCui:
+    # Workload namespace
+    workloadNamespace: "workloads"
+
+    # Data classification
+    dataClassification: "internal"
+
+    # PostgreSQL namespace
+    postgresNamespace: "postgres"
+
+    # MinIO namespace
+    minioNamespace: "minio"
+
+  # CUI Swimlane Configuration
+  cui:
+    # Workload namespace
+    workloadNamespace: "workloads-cui"
+
+    # Data classification
+    dataClassification: "cui"
+
+    # PostgreSQL namespace
+    postgresNamespace: "postgres-cui"
+
+    # MinIO namespace
+    minioNamespace: "minio-cui"
+
+    # Enable encryption at rest (required for CUI)
+    encryptionAtRest: true
+
+    # Network isolation (block all traffic except explicitly allowed)
+    networkIsolation: strict
+
+# =============================================================================
+# Identity - Teleport Zero-Trust Access
+# =============================================================================
+identity:
+  enabled: true
+
+  teleport:
+    # Cluster name (should match domain)
+    clusterName: "enclave.example.com"
+
+    # ACME / Let's Encrypt configuration
+    acme:
+      enabled: true
+      email: "admin@example.com"
+
+    # Authentication settings
+    authentication:
+      secondFactor: "webauthn"  # or "otp", "off"
+
+    # Session recording
+    sessionRecording:
+      mode: "node"  # or "proxy", "off"
+
+    # Teleport operator (for TeleportApp CRDs)
+    operator:
+      enabled: true
+
+    # Resources
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+
+# =============================================================================
+# Secrets - OpenBao Secrets Management with Auto-Unseal
+# Dual instances for CUI/Non-CUI isolation (CMMC AC.L2-3.1.3)
+# =============================================================================
+secrets:
+  enabled: true
+
+  # Non-CUI OpenBao Instance
+  openbao:
+    # Number of replicas
+    replicas: 3
+
+    # Storage configuration
+    storage:
+      size: "10Gi"
+      storageClass: ""  # uses global.storageClass if empty
+
+    # Auto-unseal configuration
+    seal:
+      # Type: "shamir" (manual), "awskms", "azurekeyvault", "gcpckms", "transit"
+      type: "shamir"
+
+      # Shamir configuration (manual unseal - default for portability)
+      shamir:
+        shares: 5
+        threshold: 3
+
+      # AWS KMS configuration
+      awskms:
+        enabled: false
+        region: "us-east-1"
+        kmsKeyId: ""
+        # Uses IRSA (IAM Roles for Service Accounts) or instance profile
+
+      # Azure Key Vault configuration
+      azurekeyvault:
+        enabled: true
+        vaultName: "<TO_BE_FILLED_BY_TF_OUTPUT_non_cui_key_vault_name>"
+        keyName: "<TO_BE_FILLED_BY_TF_OUTPUT_non_cui_unseal_key_name>"
+        tenantId: "<TO_BE_FILLED_BY_TF_OUTPUT_cluster_identity_tenant_id>"
+        clientId: "<TO_BE_FILLED_BY_TF_OUTPUT_cluster_identity_client_id>"
+        # Uses workload identity or managed identity
+
+      # GCP Cloud KMS configuration
+      gcpckms:
+        enabled: false
+        project: ""
+        location: "global"
+        keyRing: "openbao"
+        cryptoKey: "openbao-unseal"
+        # Uses workload identity
+
+      # Transit seal (use another Vault/OpenBao)
+      transit:
+        enabled: false
+        address: "https://vault.example.com"
+        token: ""
+        mountPath: "transit"
+        keyName: "autounseal"
+
+    # Audit logging
+    audit:
+      enabled: true
+
+    # Resources
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+
+  # CUI OpenBao Instance (Separate cryptographic boundary)
+  openbaoCui:
+    # Controlled by swimlanes.cuiEnabled
+    enabled: true
+
+    # Number of replicas
+    replicas: 3
+
+    # Storage configuration
+    storage:
+      size: "10Gi"
+      storageClass: ""  # uses global.storageClass if empty
+      # IMPORTANT: Should use encrypted storage class for CUI
+
+    # Auto-unseal configuration
+    # NOTE: MUST use different KMS key than non-CUI instance
+    seal:
+      # Type: "shamir" (manual), "awskms", "azurekeyvault", "gcpckms", "transit"
+      type: "azurekeyvault"
+
+      # Shamir configuration (manual unseal)
+      shamir:
+        shares: 5
+        threshold: 3
+
+      # AWS KMS configuration (SEPARATE KEY from non-CUI!)
+      awskms:
+        enabled: false
+        region: "us-east-1"
+        kmsKeyId: ""  # MUST be different from non-CUI KMS key
+        roleArn: ""   # IAM role for IRSA
+
+      # Azure Key Vault configuration (SEPARATE KEY from non-CUI!)
+      azurekeyvault:
+        enabled: true
+        vaultName: "<TO_BE_FILLED_BY_TF_OUTPUT_cui_key_vault_name>"
+        keyName: "<TO_BE_FILLED_BY_TF_OUTPUT_cui_unseal_key_name>"
+        tenantId: "<TO_BE_FILLED_BY_TF_OUTPUT_cluster_identity_tenant_id>"
+        clientId: "<TO_BE_FILLED_BY_TF_OUTPUT_cluster_identity_client_id>"  # For workload identity
+
+      # GCP Cloud KMS configuration (SEPARATE KEY from non-CUI!)
+      gcpckms:
+        enabled: false
+        project: ""
+        location: "global"
+        keyRing: "openbao-cui"
+        cryptoKey: "openbao-cui-unseal"  # Different key
+
+      # Transit seal (use another Vault/OpenBao)
+      transit:
+        enabled: false
+        address: "https://vault.example.com"
+        token: ""
+        mountPath: "transit"
+        keyName: "autounseal-cui"
+
+    # Audit logging (always enabled for CUI)
+    audit:
+      enabled: true
+
+    # Resources
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+
+# =============================================================================
+# Policy - OPAL + Cedar Authorization
+# =============================================================================
+policy:
+  enabled: true
+
+  opal:
+    # Policy repository configuration
+    policyRepo:
+      url: "git@github.com:your-org/enclave-policies.git"
+      branch: "main"
+      sshKey: ""  # SSH private key for accessing policy repo
+      # Poll interval for policy updates
+      pollInterval: "30s"
+
+    # OPAL Server configuration
+    server:
+      replicas: 2
+
+      # Policy broadcast settings
+      broadcast:
+        enabled: true
+        uri: "redis://opal-redis:6379"
+
+      resources:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+
+    # OPAL Client (Cedar PDP) configuration
+    client:
+      replicas: 3
+
+      # Cedar evaluator configuration
+      cedar:
+        schemaPath: "/policies/cedar/schema/nabla.cedarschema"
+        policiesPath: "/policies/cedar/policies"
+        entitiesPath: "/policies/cedar/entities"
+
+      # Data sources for entity sync
+      dataSources:
+        # Sync users from Teleport
+        teleport:
+          enabled: true
+          endpoint: "http://teleport.teleport.svc.cluster.local:3080"
+
+        # Sync resources from Kubernetes
+        kubernetes:
+          enabled: true
+
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+
+# =============================================================================
+# Data Tier - PostgreSQL + Object Storage (Dual Swimlanes)
+# =============================================================================
+data:
+  enabled: true
+
+  # Non-CUI PostgreSQL Configuration
+  postgres:
+    enabled: true
+
+    # Number of instances
+    instances: 3
+
+    # Storage configuration
+    storage:
+      size: "50Gi"
+      storageClass: ""  # uses global.storageClass if empty
+
+    # PostgreSQL version and configuration
+    postgresql:
+      version: "16"
+      parameters:
+        max_connections: "200"
+        shared_buffers: "256MB"
+        effective_cache_size: "768MB"
+
+    # Backup configuration
+    backup:
+      enabled: true
+      retentionPolicy: "30d"
+      # Uses MinIO for backup storage
+
+    # Resources
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+
+  # CUI PostgreSQL Configuration (separate cluster)
+  postgresCui:
+    enabled: true  # Controlled by swimlanes.cuiEnabled
+
+    # Number of instances
+    instances: 3
+
+    # Storage configuration - ENCRYPTED
+    storage:
+      size: "50Gi"
+      storageClass: ""
+      encrypted: true  # Requires storage class with encryption
+
+    # PostgreSQL version and configuration
+    postgresql:
+      version: "16"
+      parameters:
+        max_connections: "200"
+        shared_buffers: "256MB"
+        effective_cache_size: "768MB"
+        # Additional security settings for CUI
+        ssl: "on"
+        ssl_min_protocol_version: "TLSv1.3"
+
+    # Backup configuration
+    backup:
+      enabled: true
+      retentionPolicy: "90d"  # Longer retention for CUI
+      encrypted: true
+
+    # Resources
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+
+  # Non-CUI MinIO Configuration
+  minio:
+    enabled: true
+
+    # Tenant configuration
+    tenant:
+      servers: 4
+      volumesPerServer: 2
+      volumeSize: "50Gi"
+      storageClass: ""
+
+    # Buckets to create
+    buckets:
+      - name: "postgres-backups"
+      - name: "application-data"
+      - name: "audit-logs"
+
+    # Resources per server
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+
+  # CUI MinIO Configuration (separate tenant)
+  minioCui:
+    enabled: true  # Controlled by swimlanes.cuiEnabled
+
+    # Tenant configuration - ENCRYPTED
+    tenant:
+      servers: 4
+      volumesPerServer: 2
+      volumeSize: "50Gi"
+      storageClass: ""
+      encrypted: true
+
+    # Buckets to create
+    buckets:
+      - name: "postgres-cui-backups"
+      - name: "cui-application-data"
+      - name: "cui-audit-logs"
+
+    # Resources per server
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+
+# =============================================================================
+# Observability - Monitoring and Health Checks
+# =============================================================================
+observability:
+  # Prometheus monitoring
+  prometheus:
+    enabled: true
+
+    # Storage for metrics
+    storage:
+      size: "50Gi"
+      storageClass: ""
+
+    # Retention period
+    retention: "30d"
+
+    # Grafana dashboard
+    grafana:
+      enabled: true
+      adminPassword: ""  # Auto-generated if empty
+
+  # Gatus health monitoring
+  gatus:
+    enabled: true
+
+    # Health check endpoints (auto-configured for deployed services)
+    endpoints: []
+
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+# =============================================================================
+# Security - Vulnerability Scanning
+# =============================================================================
+security:
+  # Grype vulnerability scanner
+  grype:
+    enabled: true
+
+    # Scan schedule (cron format)
+    schedule: "0 2 * * *"  # 2 AM daily
+
+    # Scan configuration
+    scanConfig:
+      failOnSeverity: "high"
+
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+
+# =============================================================================
+# Network Policies - CUI Isolation
+# =============================================================================
+networkPolicies:
+  enabled: true
+
+  # Default deny all traffic
+  defaultDeny: true
+
+  # Allow DNS queries
+  allowDNS: true
+
+  # CUI isolation rules
+  cuiIsolation:
+    # Block all traffic between CUI and non-CUI namespaces
+    enabled: true
+
+    # Allow specific cross-lane traffic (e.g., for observability)
+    allowedCrossLaneTraffic:
+      - from: "observability"
+        to: ["workloads", "workloads-cui"]
+        ports: [9090]  # Prometheus metrics
+
+# =============================================================================
+# Pod Security Standards
+# =============================================================================
+podSecurityStandards:
+  # Enforce restricted pod security standard
+  enforce: "restricted"
+
+  # Audit mode
+  audit: "restricted"
+
+  # Warn mode
+  warn: "restricted"

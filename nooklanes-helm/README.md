@@ -1,4 +1,4 @@
-# Nooklanes 
+# Nooklanes Helm Chart
 
 CMMC-compliant Kubernetes enclave with CUI/Non-CUI swimlane isolation.
 
