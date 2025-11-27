@@ -1,0 +1,33 @@
+kind: role
+metadata:
+  name: superadmin
+spec:
+  allow:
+    logins:
+      - root
+      - admin
+      - ubuntu
+      - ec2-user
+    node_labels:
+      "*": "*"
+    app_labels:
+      "*": "*"
+    kubernetes_labels:
+      "*": "*"
+    db_labels:
+      "*": "*"
+    aws_labels:
+      "*": "*"
+    gcp_labels:
+      "*": "*"
+    azure_labels:
+      "*": "*"
+  options:
+    max_session_ttl: 24h
+    port_forwarding: true
+    forward_agent: true
+    cert_format: standard
+    create_host_user: true
+    require_session_join_request: false
+  deny: {}
+version: v5

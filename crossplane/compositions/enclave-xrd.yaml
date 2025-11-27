@@ -30,7 +30,6 @@ spec:
               required:
                 - customer
                 - domain
-                - azure
                 - teleport
               properties:
                 customer:
@@ -83,6 +82,12 @@ spec:
                         - otp
                         - "off"
                       default: "webauthn"
+                existingCluster:
+                  type: object
+                  properties:
+                    kubeconfigSecretRef:
+                      type: string
+                      description: "Reference to a secret in the crossplane-system namespace containing the kubeconfig for the existing cluster."
                 sizing:
                   type: string
                   description: "T-shirt size for the enclave"

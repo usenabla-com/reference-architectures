@@ -114,7 +114,7 @@ secrets:
     # Auto-unseal configuration
     seal:
       # Type: "shamir" (manual), "awskms", "azurekeyvault", "gcpckms", "transit"
-      type: "shamir"
+      type: "azurekeyvault"
 
       # Shamir configuration (manual unseal - default for portability)
       shamir:

@@ -1,0 +1,34 @@
+# -----------------------------------------------------------------------------
+# Example BYOC (Bring Your Own Cluster) Customer Claim
+# -----------------------------------------------------------------------------
+apiVersion: usenabla.com/v1alpha1
+kind: EnclaveClaim
+metadata:
+  name: byoc-customer-1
+  namespace: default
+spec:
+  # Select the BYOC composition
+  compositionSelector:
+    matchLabels:
+      enclave-type: byoc
+      provider: helm
+
+  # Parameters for the EnclaveInstance
+  customer: "byoc-customer-1"
+  domain: "byoc-customer-1.example.com"
+  
+  # The 'azure' block is omitted since we are using an existing cluster.
+  
+  # Reference to the secret containing the kubeconfig for the existing cluster.
+  # This secret must exist in the 'crossplane-system' namespace.
+  existingCluster:
+    kubeconfigSecretRef: "my-existing-cluster-kubeconfig-secret"
+
+  teleport:
+    acmeEmail: "admin@byoc-customer-1.example.com"
+  
+  sizing: "medium"
+  
+  features:
+    cuiEnabled: true
+    observabilityEnabled: true

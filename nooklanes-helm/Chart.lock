@@ -1,0 +1,15 @@
+dependencies:
+- name: teleport-cluster
+  repository: https://charts.releases.teleport.dev
+  version: 18.0.0
+- name: cloudnative-pg
+  repository: https://cloudnative-pg.github.io/charts
+  version: 0.20.1
+- name: operator
+  repository: https://operator.min.io
+  version: 5.0.12
+- name: kube-prometheus-stack
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 56.0.0
+digest: sha256:d46f6a1b90441d9c67f0a227525ce0719a21d5007290a880841ef66bf8b3fc92
+generated: "2025-11-25T17:27:14.83492-05:00"
