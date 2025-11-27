@@ -1,14 +1,14 @@
 # -----------------------------------------------------------------------------
-# EnclaveInstance Composition (Helm provider)
-# Maps EnclaveInstance spec to Helm ProviderConfig + Helm Release
+# EnclaveInstance Composition (Terraform provider)
+# Maps EnclaveInstance spec to Terraform Workspace
 # -----------------------------------------------------------------------------
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: enclave-helm
+  name: enclave-terraform
   labels:
     crossplane.io/xrd: enclaveinstances.usenabla.com
-    provider: helm
+    provider: terraform
 spec:
   compositeTypeRef:
     apiVersion: usenabla.com/v1alpha1
@@ -26,142 +26,61 @@ spec:
 
   resources:
     # -------------------------------------------------------------------------
-    # ProviderConfig: per-enclave provider-helm config that reads kubeconfig from Secret
+    # Terraform Workspace - provisions the enclave using Terraform
     # -------------------------------------------------------------------------
-    - name: providerconfig
+    - name: enclave-workspace
       base:
-        apiVersion: helm.crossplane.io/v1beta1
-        kind: ProviderConfig
-        metadata:
-          # metadata.name patched from composite customer (below)
-          namespace: crossplane-system
-        spec:
-          # credentials are loaded from a Secret containing kubeconfig (key: kubeconfig)
-          credentials:
-            source: Secret
-            secretRef:
-              namespace: crossplane-system
-              # name patched from composite customer
-              name: "" 
-              key: kubeconfig
-          # optional default namespace for Releases created with this provider
-          defaultNamespace: default
-      patches:
-        # name this provider-config: provider-helm-enclave-<customer>
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.customer
-          toFieldPath: metadata.name
-          transforms:
-            - type: string
-              string:
-                fmt: "provider-helm-enclave-%s"
-
-        # secret name for kubeconfig: enclave-<customer>-kubeconfig
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.customer
-          toFieldPath: spec.credentials.secretRef.name
-          transforms:
-            - type: string
-              string:
-                fmt: "enclave-%s-kubeconfig"
-
-    # -------------------------------------------------------------------------
-    # Helm Release - deploys the enclave chart using the ProviderConfig above
-    # -------------------------------------------------------------------------
-    - name: enclave-release
-      base:
-        apiVersion: helm.crossplane.io/v1beta1
-        kind: Release
+        apiVersion: tf.upbound.io/v1beta1
+        kind: Workspace
         metadata:
           name: ""   # patched below from customer
           namespace: crossplane-system
         spec:
           forProvider:
-            chart:
-              # replace with your real chart name & repo
-              name: nabla-enclave
-              repository: "https://charts.usenabla.com"
-              version: "0.1.0"
-            releaseName: ""   # patched below
-            namespace: ""     # patched below (target namespace in cluster)
-            # values is a map; patches will populate values.* entries
-            values: {}
+            # variables is a map; patches will populate variables.* entries
+            variables: {}
           providerConfigRef:
-            name: ""  # patched below to match providerconfig above
+            name: terraform-cloud
       patches:
-        # release & metadata names from customer
+        # workspace name from customer
         - type: FromCompositeFieldPath
           fromFieldPath: spec.customer
           toFieldPath: metadata.name
           transforms:
             - type: string
               string:
-                fmt: "enclave-release-%s"
+                fmt: "enclave-workspace-%s"
 
+        # --- Map EnclaveInstance fields to Terraform variables ---
+
+        # customer -> variables.customer
         - type: FromCompositeFieldPath
           fromFieldPath: spec.customer
-          toFieldPath: spec.forProvider.releaseName
-          transforms:
-            - type: string
-              string:
-                fmt: "enclave-%s"
-
-        # target install namespace (chart namespace) - optional, uses clusterPrefix if provided
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.clusterPrefix
-          toFieldPath: spec.forProvider.namespace
-          transforms:
-            - type: string
-              string:
-                fmt: "%s-ns"
-
-        # wire providerConfigRef to the providerconfig created above
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.customer
-          toFieldPath: spec.providerConfigRef.name
-          transforms:
-            - type: string
-              string:
-                fmt: "provider-helm-enclave-%s"
-
-        # --- Map EnclaveInstance fields to Helm chart values ---
-
-        # environment -> values.environment
+          toFieldPath: spec.forProvider.variables.customer
+        # environment -> variables.environment
         - type: FromCompositeFieldPath
           fromFieldPath: spec.environment
-          toFieldPath: spec.forProvider.values.environment
-        # domain -> values.domain
+          toFieldPath: spec.forProvider.variables.environment
+        # domain -> variables.domain
         - type: FromCompositeFieldPath
           fromFieldPath: spec.domain
-          toFieldPath: spec.forProvider.values.domain
-        # clusterPrefix -> values.clusterPrefix
+          toFieldPath: spec.forProvider.variables.domain
+        # clusterPrefix -> variables.cluster_prefix
         - type: FromCompositeFieldPath
           fromFieldPath: spec.clusterPrefix
-          toFieldPath: spec.forProvider.values.clusterPrefix
-        # resource prefix (customer) -> values.resourcePrefix
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.customer
-          toFieldPath: spec.forProvider.values.resourcePrefix
-        # azure.region -> values.location (if chart expects region)
+          toFieldPath: spec.forProvider.variables.cluster_prefix
+        # azure.region -> variables.location
         - type: FromCompositeFieldPath
           fromFieldPath: spec.azure.region
-          toFieldPath: spec.forProvider.values.location
-        # teleport.acmeEmail -> values.teleport.acmeEmail
+          toFieldPath: spec.forProvider.variables.location
+        # teleport.acmeEmail -> variables.teleport_acme_email
         - type: FromCompositeFieldPath
           fromFieldPath: spec.teleport.acmeEmail
-          toFieldPath: spec.forProvider.values.teleport.acmeEmail
-        # teleport config (example nested JSON structure) - if chart expects full object
-        - type: FromCompositeFieldPath
-          fromFieldPath: spec.teleport.acmeEmail
-          toFieldPath: spec.forProvider.values.teleport.acmeEnabledEmail
-          transforms:
-            - type: string
-              string:
-                fmt: '{"acme_enabled": true, "acme_email":"%s", "second_factor":"webauthn"}'
-        # CUI enabled flag -> values.features.cuiEnabled
+          toFieldPath: spec.forProvider.variables.teleport_acme_email
+        # features.cuiEnabled -> variables.cui_enabled
         - type: FromCompositeFieldPath
           fromFieldPath: spec.features.cuiEnabled
-          toFieldPath: spec.forProvider.values.features.cuiEnabled
+          toFieldPath: spec.forProvider.variables.cui_enabled
           transforms:
             - type: convert
               convert:
@@ -169,19 +88,16 @@ spec:
 
         # --- Status patches ---
 
-        # map Release provider status to composite status.phase
-        # NOTE: the exact status path that provider-helm sets may vary by version.
-        # If your provider stores readiness elsewhere (e.g. status.atProvider.status or status.conditions),
-        # adjust this patch to the correct field.
+        # map Workspace ready condition to composite status.phase
         - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.state
+          fromFieldPath: status.conditions[?(@.type=='Ready')].status
           toFieldPath: status.phase
           transforms:
             - type: map
               map:
-                deployed: Ready
-                pending_install: Provisioning
-                failed: Error
+                "True": Ready
+                "False": Provisioning
+                "Unknown": Provisioning
 
         # Compose a cluster FQDN from clusterPrefix + domain
         - type: CombineFromComposite
@@ -204,9 +120,7 @@ spec:
                 fmt: "enclave-%s-kubeconfig"
 
       connectionDetails:
-        # We can't create the kubeconfig content here (it's expected that a cluster-provisioning
-        # stage writes the kubeconfig secret). Instead expose the kubeconfig secret name
-        # as a connection detail by referencing the secret key if present in the same namespace.
+        # Expose the kubeconfig secret name as a connection detail
         - name: kubeconfigSecretName
           fromFieldPath: status.kubeconfigSecretName
           fromConnectionSecretKey: kubeconfigSecretName
